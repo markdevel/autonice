@@ -25,6 +25,6 @@ public:
 	virtual void OnOK();
 	CProcessConfig* model;
 	int Watching;
-	CString ExeFileName;
+	CString ExeFilePath;
 	int PriorityIndex;
 };

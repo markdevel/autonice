@@ -77,7 +77,7 @@ BOOL CServicePropDlg::OnInitDialog()
 			statusText = _T("•s–¾");
 			break;
 		}
-		GetDlgItem(IDC_SERVICE_STATUS)->SetWindowText(statusText);
+//		GetDlgItem(IDC_SERVICE_STATUS)->SetWindowText(statusText);
 	}
 	CloseServiceHandle(serviceHandle);
 	CloseServiceHandle(managerHandle);

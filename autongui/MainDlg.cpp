@@ -60,10 +60,10 @@ BOOL CMainDlg::OnInitDialog()
 	// レジストリの読み込み
 	HKEY key, childKey;
 	LSTATUS rv;
-	rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WOW64_64KEY, NULL, &key, NULL);
+	rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &key, NULL);
 	if(ERROR_SUCCESS == rv){
 		ServiceConfig.LoadFromRegistry(key);
-		rv = RegCreateKeyEx(key, APP_REG_KEY_PROCESS_CONFIG, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WOW64_64KEY, NULL, &childKey, NULL);
+		rv = RegCreateKeyEx(key, APP_REG_KEY_PROCESS_CONFIG, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &childKey, NULL);
 		if(ERROR_SUCCESS == rv){
 			for(DWORD i = 0; ; ++i){
 				TCHAR keyName[MAX_PATH];
@@ -199,10 +199,10 @@ void CMainDlg::OnOK()
 
 	// レジストリに保存
 	HKEY key, childKey;
-	LSTATUS rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS | KEY_WOW64_64KEY, NULL, &key, NULL);
+	LSTATUS rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &key, NULL);
 	if(ERROR_SUCCESS == rv){
 		ServiceConfig.SaveToRegistry(key);
-		rv = RegCreateKeyEx(key, APP_REG_KEY_PROCESS_CONFIG, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS | KEY_WOW64_64KEY, NULL, &childKey, NULL);
+		rv = RegCreateKeyEx(key, APP_REG_KEY_PROCESS_CONFIG, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &childKey, NULL);
 		if(ERROR_SUCCESS == rv){
 			for(;;){
 				TCHAR keyName[256];
@@ -211,7 +211,7 @@ void CMainDlg::OnOK()
 				if(ERROR_SUCCESS != rv){
 					break;
 				}
-				RegDeleteKeyEx(childKey, keyName, KEY_WOW64_64KEY, NULL);
+				RegDeleteKey(childKey, keyName);
 			}
 			std::for_each(ProcessConfigList.begin(), ProcessConfigList.end(), [=](CProcessConfig& x) -> void { x.SaveToRegistry(childKey); });
 			RegCloseKey(childKey);
@@ -274,7 +274,7 @@ void CMainDlg::OnGetDispInfoProcessConfigList(NMHDR *pNMHDR, LRESULT *pResult)
 	if(pDispInfo->item.mask & LVIF_TEXT){
 		switch(pDispInfo->item.iSubItem){
 		case 0:
-			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, ProcessConfigList[pDispInfo->item.iItem].ExeFileName);
+			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, ProcessConfigList[pDispInfo->item.iItem].ExeFilePath);
 			break;
 
 		case 1:

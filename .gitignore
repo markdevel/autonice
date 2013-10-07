@@ -6,3 +6,4 @@ ipch/
 *.user
 *.sdf
 *.suo
+*.tmp

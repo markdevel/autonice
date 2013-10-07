@@ -126,7 +126,7 @@ ServiceMain(
 	SetServiceStatus(serviceStatusHandle, &serviceStatus);
 
 	// レジストリから設定値を読み込む
-	rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE, NULL, &keyHandle, NULL);
+	rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &keyHandle, NULL);
 	if(ERROR_SUCCESS != rv){
 		return;
 	}
