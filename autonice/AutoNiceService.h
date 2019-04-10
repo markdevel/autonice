@@ -23,12 +23,12 @@ public:
 		CRegistryKey regKey;
 		regKey.Create(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT);
 		HANDLE handles[2]{
-			keyChangeEventHandle.get(),
-			GetTerminateEventHandle()
+			GetTerminateEventHandle(),
+			keyChangeEventHandle.get()
 		};
 		CRegistrySerializer registrySerializer;
 		CAppConfig appConfig = registrySerializer.Load(regKey);
-		do
+		for(;;)
 		{
 			SCOPED_HANDLE processSnapshot(CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0), &::CloseHandle);
 			if (INVALID_HANDLE_VALUE == processSnapshot.get())
@@ -58,8 +58,16 @@ public:
 			}
 			while (Process32Next(processSnapshot.get(), &processEntry));
 			regKey.RegisterNotifyChange(keyChangeEventHandle.get());
+			DWORD rv = WaitForMultipleObjects(ARRAYSIZE(handles), handles, FALSE, appConfig.Service.ProcessCheckInterval);
+			if (WAIT_OBJECT_0 + 0 == rv)
+			{
+				break;
+			}
+			else if (WAIT_OBJECT_0 + 1 == rv)
+			{
+				appConfig = registrySerializer.Load(regKey);
+			}
 		}
-		while (WaitForMultipleObjects(ARRAYSIZE(handles), handles, FALSE, appConfig.Service.ProcessCheckInterval) != WAIT_OBJECT_0 + 1);
 		GetEventSource().WriteString(TRACE_LEVEL_INFORMATION, 0, L"Terminated.");
 	}
 };
