@@ -2,8 +2,7 @@
 //
 
 #pragma once
-#include "ServiceConfig.h"
-#include "ProcessConfig.h"
+#include "AppConfig.h"
 
 // CMainDlg ダイアログ
 class CMainDlg : public CDialogEx
@@ -21,10 +20,7 @@ protected:
 // 実装
 protected:
 	HICON m_hIcon;
-	CServiceConfig ServiceConfig;
-	std::vector<CProcessConfig> ProcessConfigList;
-
-	void AdjustLayout();
+	CAppConfig appConfig;
 
 	// 生成された、メッセージ割り当て関数
 	virtual BOOL OnInitDialog();
@@ -33,7 +29,6 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	virtual void OnOK();
-	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnBnClickedAppend();
 	afx_msg void OnBnClickedModify();
 	afx_msg void OnBnClickedDelete();

@@ -32,6 +32,8 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <string>
+#include <memory>
 #include <strsafe.h>
 #include <Winsvc.h>
 

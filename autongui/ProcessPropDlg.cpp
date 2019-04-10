@@ -7,6 +7,7 @@
 #include "afxdialogex.h"
 #include "PriorityMap.h"
 #include "resource.h"
+#include "findindex.h"
 
 // CProcessPropDlg ダイアログ
 
@@ -14,6 +15,8 @@ IMPLEMENT_DYNAMIC(CProcessPropDlg, CDialog)
 
 CProcessPropDlg::CProcessPropDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CProcessPropDlg::IDD, pParent)
+	, Enable(true)
+	, PriorityIndex(2)
 {
 }
 
@@ -24,7 +27,7 @@ CProcessPropDlg::~CProcessPropDlg()
 void CProcessPropDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	DDX_Radio(pDX, IDC_PROCESS_WATCHING_ENABLE, Watching);
+	DDX_Radio(pDX, IDC_PROCESS_WATCHING_ENABLE, Enable);
 	DDX_Text(pDX, IDC_PROCESS_EXE_FILE_NAME, ExeFilePath);
 	DDV_MaxChars(pDX, ExeFilePath, MAX_PATH);
 	DDX_CBIndex(pDX, IDC_PROCESS_PRIORITY, PriorityIndex);
@@ -54,19 +57,6 @@ void CProcessPropDlg::OnBnClickedProcessPropBrowse()
 	}
 	SHGetPathFromIDList(pidlBrowse, path);
 	PathStripPath(path);
-	LPTSTR ext = PathFindExtension(path);
-	if (NULL == ext)
-	{
-		::AfxMessageBox(IDS_BAD_EXE_FILE, MB_ICONERROR);
-		return;
-	}
-	if (_tcsicmp(ext, _T(".exe")) != 0
-		&& _tcsicmp(ext, _T(".com")) != 0
-		&& _tcsicmp(ext, _T(".des")) != 0)
-	{
-		::AfxMessageBox(IDS_BAD_EXE_FILE, MB_ICONERROR);
-		return;
-	}
 	GetDlgItem(IDC_PROCESS_EXE_FILE_NAME)->SetWindowTextW(path);
 }
 
@@ -74,15 +64,15 @@ BOOL CProcessPropDlg::OnInitDialog()
 {
 	// コンボボックスの初期化
 	CComboBox* cb1 = static_cast<CComboBox*>(GetDlgItem(IDC_PROCESS_PRIORITY));
-	for (int i = 0; i < 5; ++i){
+	for (UINT i : g_PriorityResourceStringMap)
+	{
 		CString label;
-		label.LoadString(g_PriorityResourceStringMap[i]);
+		label.LoadString(i);
 		cb1->AddString(label);
 	}
-	Watching = model->Enable == FALSE;
-	ExeFilePath = model->ExeFilePath;
-	PriorityIndex = PriorityClassToIndex(model->PriorityClass);
-
+	Enable = Model.Enable == FALSE;
+	ExeFilePath = Model.Filename.c_str();
+	PriorityIndex = (int)find_index(g_PriorityClassMap, Model.PriorityClass);
 	CDialog::OnInitDialog();
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 例外 : OCX プロパティ ページは必ず FALSE を返します。
@@ -91,13 +81,10 @@ BOOL CProcessPropDlg::OnInitDialog()
 void CProcessPropDlg::OnOK()
 {
 	UpdateData(TRUE);
-
 	PathStripPath(ExeFilePath.LockBuffer());
 	ExeFilePath.ReleaseBuffer();
-
-	model->Enable = Watching == 0;
-	model->ExeFilePath = ExeFilePath;
-	model->PriorityClass = g_PriorityClassMap[PriorityIndex];
-
+	Model.Enable = Enable == 0;
+	Model.Filename = ExeFilePath;
+	Model.PriorityClass = g_PriorityClassMap[PriorityIndex];
 	CDialog::OnOK();
 }

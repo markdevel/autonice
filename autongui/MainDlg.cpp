@@ -9,9 +9,10 @@
 #include "ServicePropDlg.h"
 #include "PriorityMap.h"
 #include "Resource.h"
+#include "RegistrySerializer.h"
+#include "findindex.h"
 
 #define APP_REG_KEY_ROOT _T("Software\\markdevel\\autonice")
-#define APP_REG_KEY_PROCESS_CONFIG _T("ProcessConfig")
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -58,28 +59,8 @@ BOOL CMainDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 小さいアイコンの設定
 
 	// レジストリの読み込み
-	HKEY key, childKey;
-	LSTATUS rv;
-	rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &key, NULL);
-	if(ERROR_SUCCESS == rv){
-		ServiceConfig.LoadFromRegistry(key);
-		rv = RegCreateKeyEx(key, APP_REG_KEY_PROCESS_CONFIG, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &childKey, NULL);
-		if(ERROR_SUCCESS == rv){
-			for(DWORD i = 0; ; ++i){
-				TCHAR keyName[MAX_PATH];
-				DWORD cchKeyName = ARRAYSIZE(keyName);
-				rv = RegEnumKeyEx(childKey, i, keyName, &cchKeyName, NULL, NULL, NULL, NULL);
-				if(ERROR_SUCCESS != rv){
-					break;
-				}
-				CProcessConfig model;
-				model.LoadFromRegistry(childKey, keyName);
-				ProcessConfigList.push_back(model);
-			}
-			RegCloseKey(childKey);
-		}
-		RegCloseKey(key);
-	}
+	CRegistrySerializer regReader;
+	appConfig = regReader.Load(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT);
 
 	// リストビューの初期化
 	CString label;
@@ -100,10 +81,7 @@ BOOL CMainDlg::OnInitDialog()
 	col.pszText = const_cast<LPTSTR>(static_cast<LPCTSTR>(label));
 	col.cx = 60;
 	ctl->InsertColumn(2, &col);
-	ctl->SetItemCountEx((int)ProcessConfigList.size(), LVSICF_NOINVALIDATEALL);
-
-	// UI部品レイアウトを整える
-	AdjustLayout();
+	ctl->SetItemCountEx((int)appConfig.Process.size(), LVSICF_NOINVALIDATEALL);
 
 	return TRUE;  // フォーカスをコントロールに設定した場合を除き、TRUE を返します。
 }
@@ -147,16 +125,15 @@ HCURSOR CMainDlg::OnQueryDragIcon()
 void CMainDlg::OnBnClickedAppend()
 {
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
-	CProcessConfig model;
 
 	// 新規作成ダイアログの表示
 	CProcessPropDlg propDlg;
-	propDlg.model = &model;
 	INT_PTR rv = propDlg.DoModal();
-	if(IDOK == rv){
+	if (IDOK == rv)
+	{
 		// リストに追加
-		ProcessConfigList.push_back(model);
-		ctl->SetItemCountEx((int)ProcessConfigList.size(), LVSICF_NOINVALIDATEALL);
+		appConfig.Process.emplace(std::make_pair(propDlg.Model.Filename, propDlg.Model));
+		ctl->SetItemCountEx((int)appConfig.Process.size(), LVSICF_NOINVALIDATEALL);
 	}
 }
 
@@ -164,16 +141,18 @@ void CMainDlg::OnBnClickedModify()
 {
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
 	POSITION pos = ctl->GetFirstSelectedItemPosition();
-	if(NULL == pos){
+	if (NULL == pos)
+	{
 		return;
 	}
 	int index = ctl->GetNextSelectedItem(pos);
 
 	// 変更ダイアログの表示
 	CProcessPropDlg propDlg;
-	propDlg.model = &ProcessConfigList[index];
+	propDlg.Model = std::next(appConfig.Process.begin(), index)->second;
 	INT_PTR rv = propDlg.DoModal();
-	if(IDOK == rv){
+	if (IDOK == rv)
+	{
 		// リストの更新
 		ctl->Update(index);
 	}
@@ -183,14 +162,15 @@ void CMainDlg::OnBnClickedDelete()
 {
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
 	POSITION pos = ctl->GetFirstSelectedItemPosition();
-	if(NULL == pos){
+	if (NULL == pos)
+	{
 		return;
 	}
 	int index = ctl->GetNextSelectedItem(pos);
 
 	// リストから削除
-	ProcessConfigList.erase(ProcessConfigList.begin() + index);
-	ctl->SetItemCountEx((int)ProcessConfigList.size(), LVSICF_NOINVALIDATEALL);
+	appConfig.Process.erase(std::next(appConfig.Process.begin(), index));
+	ctl->SetItemCountEx((int)appConfig.Process.size(), LVSICF_NOINVALIDATEALL);
 }
 
 void CMainDlg::OnOK()
@@ -198,148 +178,88 @@ void CMainDlg::OnOK()
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
 
 	// レジストリに保存
-	HKEY key, childKey;
-	LSTATUS rv = RegCreateKeyEx(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &key, NULL);
-	if(ERROR_SUCCESS == rv){
-		ServiceConfig.SaveToRegistry(key);
-		rv = RegCreateKeyEx(key, APP_REG_KEY_PROCESS_CONFIG, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &childKey, NULL);
-		if(ERROR_SUCCESS == rv){
-			for(;;){
-				TCHAR keyName[256];
-				DWORD cchKeyName = ARRAYSIZE(keyName);
-				rv = RegEnumKeyEx(childKey, 0, keyName, &cchKeyName, NULL, NULL, NULL, NULL);
-				if(ERROR_SUCCESS != rv){
-					break;
-				}
-				RegDeleteKey(childKey, keyName);
-			}
-			std::for_each(ProcessConfigList.begin(), ProcessConfigList.end(), [=](CProcessConfig& x) -> void { x.SaveToRegistry(childKey); });
-			RegCloseKey(childKey);
-		}
-		RegCloseKey(key);
-	}
+	CRegistrySerializer regWriter;
+	regWriter.Save(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, appConfig);
 
 	CDialogEx::OnOK();
 }
 
-void CMainDlg::AdjustLayout()
+void CMainDlg::OnGetDispInfoProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
 {
-	CWnd* ctlProcessList = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST);
-	CWnd* ctlAppend = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_APPEND);
-	CWnd* ctlModify = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_MODIFY);
-	CWnd* ctlDelete = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_DELETE);
-	CWnd* ctlShowServiceProp = GetDlgItem(IDC_MAIN_SHOW_SERVICE_PROP);
-	CWnd* ctlCopyrightUrl = GetDlgItem(IDC_MAIN_COPYRIGHT_URL);
-	CWnd* ctlOK = GetDlgItem(IDOK);
-	CWnd* ctlCancel = GetDlgItem(IDCANCEL);
-
-	CRect rcThis;
-	this->GetClientRect(&rcThis);
-	CRect rcAppend;
-	ctlAppend->GetWindowRect(&rcAppend);
-	CRect rcOK;
-	ctlOK->GetWindowRect(&rcOK);
-	CRect rcCancel;
-	ctlCancel->GetWindowRect(&rcCancel);
-
-	int w1 = rcThis.Width() - rcAppend.Width() - 30;
-	int w2 = w1 + 20;
-	int h1 = rcThis.Height() - rcOK.Height() - 30;
-	int h2 = h1 + 20;
-	ctlProcessList->SetWindowPos(NULL, 10, 10, w1, h1, SWP_NOZORDER);
-	ctlAppend->SetWindowPos(NULL, w2, 10, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	ctlModify->SetWindowPos(NULL, w2, 40, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	ctlDelete->SetWindowPos(NULL, w2, 70, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	ctlShowServiceProp->SetWindowPos(NULL, w2, 130, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	ctlCopyrightUrl->SetWindowPos(NULL, 10, h2, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	ctlOK->SetWindowPos(NULL, rcThis.Width() - (rcOK.Width() + rcCancel.Width() + 20), h2, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	ctlCancel->SetWindowPos(NULL, rcThis.Width() - (rcCancel.Width() + 10), h2, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-}
-
-void CMainDlg::OnSize(UINT nType, int cx, int cy)
-{
-	CDialogEx::OnSize(nType, cx, cy);
-
-	if(IsWindowVisible()){
-		AdjustLayout();
-	}
-}
-
-void CMainDlg::OnGetDispInfoProcessConfigList(NMHDR *pNMHDR, LRESULT *pResult)
-{
-	NMLVDISPINFO *pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
-
+	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
 	CString text;
-	if(pDispInfo->item.mask & LVIF_TEXT){
-		switch(pDispInfo->item.iSubItem){
+	if (pDispInfo->item.mask & LVIF_TEXT)
+	{
+		int i = pDispInfo->item.iItem;
+		auto iter = std::next(appConfig.Process.begin(), i);
+		switch (pDispInfo->item.iSubItem)
+		{
 		case 0:
-			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, ProcessConfigList[pDispInfo->item.iItem].ExeFilePath);
+			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, iter->second.Filename.c_str());
 			break;
 
 		case 1:
-			text.LoadString(g_PriorityResourceStringMap[PriorityClassToIndex(ProcessConfigList[pDispInfo->item.iItem].PriorityClass)]);
+			text.LoadString(g_PriorityResourceStringMap[find_index(g_PriorityClassMap, iter->second.PriorityClass)]);
 			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, text);
 			break;
 
 		case 2:
-			text.LoadString(ProcessConfigList[pDispInfo->item.iItem].Enable ? IDS_YES : IDS_NO);
+			text.LoadString(iter->second.Enable ? IDS_YES : IDS_NO);
 			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, text);
 			break;
 		}
 	}
-
 	*pResult = 0;
 }
 
-void CMainDlg::OnItemChangedProcessConfigList(NMHDR *pNMHDR, LRESULT *pResult)
+void CMainDlg::OnItemChangedProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
 {
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
-
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
 	POSITION pos = ctl->GetFirstSelectedItemPosition();
 	BOOL selected = (NULL != pos);
-	CWnd* ctlModify = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_MODIFY);
+	CWnd * ctlModify = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_MODIFY);
 	ctlModify->EnableWindow(selected);
-	CWnd* ctlDelete = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_DELETE);
+	CWnd * ctlDelete = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_DELETE);
 	ctlDelete->EnableWindow(selected);
-	
 	*pResult = 0;
 }
 
-void CMainDlg::OnDblclkProcessConfigList(NMHDR *pNMHDR, LRESULT *pResult)
+void CMainDlg::OnDblclkProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
 {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
-
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
-	if(pNMItemActivate->iItem >= 0){
+	int i = pNMItemActivate->iItem;
+	if (i >= 0)
+	{
 		// 変更ダイアログの表示
 		CProcessPropDlg propDlg;
-		propDlg.model = &ProcessConfigList[pNMItemActivate->iItem];
+		propDlg.Model = std::next(appConfig.Process.begin(), i)->second;
 		INT_PTR rv = propDlg.DoModal();
-		if(IDOK == rv){
+		if (IDOK == rv)
+		{
 			// リストの更新
-			ctl->Update(pNMItemActivate->iItem);
+			ctl->Update(i);
 		}
 	}
-
 	*pResult = 0;
 }
 
-void CMainDlg::OnClickCopyrightUrl(NMHDR *pNMHDR, LRESULT *pResult)
+void CMainDlg::OnClickCopyrightUrl(NMHDR * pNMHDR, LRESULT * pResult)
 {
 	PNMLINK pNMLink = (PNMLINK)pNMHDR;
 	ShellExecute(m_hWnd, _T("open"), pNMLink->item.szUrl, NULL, NULL, SW_SHOWNORMAL);
-
 	*pResult = 0;
 }
 
 void CMainDlg::OnClickedShowServiceProp()
 {
 	CServicePropDlg propDlg;
-	propDlg.model = &ServiceConfig;
+	propDlg.Model = appConfig.Service;
 	INT_PTR rv = propDlg.DoModal();
-	if(IDOK == rv){
+	if (IDOK == rv)
+	{
 		;
 	}
 }

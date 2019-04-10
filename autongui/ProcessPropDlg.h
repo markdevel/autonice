@@ -19,12 +19,13 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 
+	int Enable;
+	CString ExeFilePath;
+	int PriorityIndex;
+
 public:
 	afx_msg void OnBnClickedProcessPropBrowse();
 	virtual BOOL OnInitDialog();
 	virtual void OnOK();
-	CProcessConfig* model;
-	int Watching;
-	CString ExeFilePath;
-	int PriorityIndex;
+	CProcessConfig Model;
 };

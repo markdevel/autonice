@@ -8,17 +8,16 @@ class CServicePropDlg : public CDialogEx
 	DECLARE_DYNAMIC(CServicePropDlg)
 
 public:
-	CServicePropDlg(CWnd* pParent = NULL);   // 標準コンストラクター
+	CServicePropDlg(CWnd* pParent = NULL);
 	virtual ~CServicePropDlg();
-
-// ダイアログ データ
+	virtual BOOL OnInitDialog();
+	CServiceConfig Model;
 	enum { IDD = IDD_SERVICE_PROP };
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV サポート
-
+	virtual void DoDataExchange(CDataExchange* pDX);
 	DECLARE_MESSAGE_MAP()
-public:
-	virtual BOOL OnInitDialog();
-	CServiceConfig* model;
+
+private:
+	static const std::map<DWORD, UINT> statusTextMap;
 };
