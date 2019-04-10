@@ -132,8 +132,8 @@ void CMainDlg::OnBnClickedAppend()
 	if (IDOK == rv)
 	{
 		// リストに追加
-		appConfig.Process.emplace(std::make_pair(propDlg.Model.Filename, propDlg.Model));
-		ctl->SetItemCountEx((int)appConfig.Process.size(), LVSICF_NOINVALIDATEALL);
+		appConfig.Process.emplace(propDlg.Model.Filename, propDlg.Model);
+		ctl->SetItemCountEx((int)appConfig.Process.size(), 0);
 	}
 }
 
@@ -145,16 +145,21 @@ void CMainDlg::OnBnClickedModify()
 	{
 		return;
 	}
-	int index = ctl->GetNextSelectedItem(pos);
+	int i = ctl->GetNextSelectedItem(pos);
+	auto iter = std::next(appConfig.Process.begin(), i);
 
 	// 変更ダイアログの表示
 	CProcessPropDlg propDlg;
-	propDlg.Model = std::next(appConfig.Process.begin(), index)->second;
+	propDlg.Model = iter->second;
 	INT_PTR rv = propDlg.DoModal();
 	if (IDOK == rv)
 	{
+		// モデルの更新
+		appConfig.Process.erase(iter);
+		appConfig.Process.emplace(propDlg.Model.Filename, propDlg.Model);
+
 		// リストの更新
-		ctl->Update(index);
+		ctl->Update(i);
 	}
 }
 
@@ -166,17 +171,16 @@ void CMainDlg::OnBnClickedDelete()
 	{
 		return;
 	}
-	int index = ctl->GetNextSelectedItem(pos);
+	int i = ctl->GetNextSelectedItem(pos);
+	auto iter = std::next(appConfig.Process.begin(), i);
 
 	// リストから削除
-	appConfig.Process.erase(std::next(appConfig.Process.begin(), index));
-	ctl->SetItemCountEx((int)appConfig.Process.size(), LVSICF_NOINVALIDATEALL);
+	appConfig.Process.erase(iter);
+	ctl->SetItemCountEx((int)appConfig.Process.size(), 0);
 }
 
 void CMainDlg::OnOK()
 {
-	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
-
 	// レジストリに保存
 	CRegistrySerializer regWriter;
 	regWriter.Save(HKEY_LOCAL_MACHINE, APP_REG_KEY_ROOT, appConfig);
@@ -187,10 +191,9 @@ void CMainDlg::OnOK()
 void CMainDlg::OnGetDispInfoProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
 {
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
-	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
-	CString text;
 	if (pDispInfo->item.mask & LVIF_TEXT)
 	{
+		CString text;
 		int i = pDispInfo->item.iItem;
 		auto iter = std::next(appConfig.Process.begin(), i);
 		switch (pDispInfo->item.iSubItem)
@@ -200,13 +203,11 @@ void CMainDlg::OnGetDispInfoProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
 			break;
 
 		case 1:
-			text.LoadString(g_PriorityResourceStringMap[find_index(g_PriorityClassMap, iter->second.PriorityClass)]);
-			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, text);
+			::AfxLoadString(g_PriorityResourceStringMap[find_index(g_PriorityClassMap, iter->second.PriorityClass)], pDispInfo->item.pszText, pDispInfo->item.cchTextMax);
 			break;
 
 		case 2:
-			text.LoadString(iter->second.Enable ? IDS_YES : IDS_NO);
-			StringCchCopy(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, text);
+			::AfxLoadString(iter->second.Enable ? IDS_YES : IDS_NO, pDispInfo->item.pszText, pDispInfo->item.cchTextMax);
 			break;
 		}
 	}
@@ -233,12 +234,18 @@ void CMainDlg::OnDblclkProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
 	int i = pNMItemActivate->iItem;
 	if (i >= 0)
 	{
+		auto iter = std::next(appConfig.Process.begin(), i);
+
 		// 変更ダイアログの表示
 		CProcessPropDlg propDlg;
-		propDlg.Model = std::next(appConfig.Process.begin(), i)->second;
+		propDlg.Model = iter->second;
 		INT_PTR rv = propDlg.DoModal();
 		if (IDOK == rv)
 		{
+			// モデルの更新
+			appConfig.Process.erase(iter);
+			appConfig.Process.emplace(propDlg.Model.Filename, propDlg.Model);
+
 			// リストの更新
 			ctl->Update(i);
 		}
@@ -260,6 +267,7 @@ void CMainDlg::OnClickedShowServiceProp()
 	INT_PTR rv = propDlg.DoModal();
 	if (IDOK == rv)
 	{
-		;
+		// モデルの更新
+		appConfig.Service = propDlg.Model;
 	}
 }
