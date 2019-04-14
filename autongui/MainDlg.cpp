@@ -10,7 +10,7 @@
 #include "PriorityMap.h"
 #include "Resource.h"
 #include "RegistrySerializer.h"
-#include "findindex.h"
+#include "stlext.h"
 
 #define APP_REG_KEY_ROOT _T("Software\\markdevel\\autonice")
 
@@ -33,16 +33,14 @@ void CMainDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CMainDlg, CDialogEx)
 	ON_WM_PAINT()
-	ON_WM_SYSCOMMAND()
 	ON_WM_QUERYDRAGICON()
-	ON_WM_SIZE()
 	ON_BN_CLICKED(IDC_MAIN_PROCESS_CONFIG_APPEND, &CMainDlg::OnBnClickedAppend)
 	ON_BN_CLICKED(IDC_MAIN_PROCESS_CONFIG_MODIFY, &CMainDlg::OnBnClickedModify)
 	ON_BN_CLICKED(IDC_MAIN_PROCESS_CONFIG_DELETE, &CMainDlg::OnBnClickedDelete)
-	ON_NOTIFY(LVN_ITEMCHANGED, IDC_MAIN_PROCESS_CONFIG_LIST, &CMainDlg::OnItemChangedProcessConfigList)
-	ON_NOTIFY(LVN_GETDISPINFO, IDC_MAIN_PROCESS_CONFIG_LIST, &CMainDlg::OnGetDispInfoProcessConfigList)
+	ON_NOTIFY(LVN_ITEMCHANGED, IDC_MAIN_PROCESS_CONFIG_LIST, &CMainDlg::OnItemChanged)
+	ON_NOTIFY(LVN_GETDISPINFO, IDC_MAIN_PROCESS_CONFIG_LIST, &CMainDlg::OnGetDispInfo)
+	ON_NOTIFY(LVN_ITEMACTIVATE, IDC_MAIN_PROCESS_CONFIG_LIST, &CMainDlg::OnItemActivate)
 	ON_NOTIFY(NM_CLICK, IDC_MAIN_COPYRIGHT_URL, &CMainDlg::OnClickCopyrightUrl)
-	ON_NOTIFY(NM_DBLCLK, IDC_MAIN_PROCESS_CONFIG_LIST, &CMainDlg::OnDblclkProcessConfigList)
 	ON_BN_CLICKED(IDC_MAIN_SHOW_SERVICE_PROP, &CMainDlg::OnClickedShowServiceProp)
 END_MESSAGE_MAP()
 
@@ -188,7 +186,7 @@ void CMainDlg::OnOK()
 	CDialogEx::OnOK();
 }
 
-void CMainDlg::OnGetDispInfoProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
+void CMainDlg::OnGetDispInfo(NMHDR * pNMHDR, LRESULT * pResult)
 {
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	if (pDispInfo->item.mask & LVIF_TEXT)
@@ -214,20 +212,17 @@ void CMainDlg::OnGetDispInfoProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
 	*pResult = 0;
 }
 
-void CMainDlg::OnItemChangedProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
+void CMainDlg::OnItemChanged(NMHDR * pNMHDR, LRESULT * pResult)
 {
-	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));
 	POSITION pos = ctl->GetFirstSelectedItemPosition();
 	BOOL selected = (NULL != pos);
-	CWnd * ctlModify = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_MODIFY);
-	ctlModify->EnableWindow(selected);
-	CWnd * ctlDelete = GetDlgItem(IDC_MAIN_PROCESS_CONFIG_DELETE);
-	ctlDelete->EnableWindow(selected);
+	GetDlgItem(IDC_MAIN_PROCESS_CONFIG_MODIFY)->EnableWindow(selected);
+	GetDlgItem(IDC_MAIN_PROCESS_CONFIG_DELETE)->EnableWindow(selected);
 	*pResult = 0;
 }
 
-void CMainDlg::OnDblclkProcessConfigList(NMHDR * pNMHDR, LRESULT * pResult)
+void CMainDlg::OnItemActivate(NMHDR * pNMHDR, LRESULT * pResult)
 {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
 	CListCtrl* ctl = static_cast<CListCtrl*>(GetDlgItem(IDC_MAIN_PROCESS_CONFIG_LIST));

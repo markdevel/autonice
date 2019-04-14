@@ -4,10 +4,11 @@
 #include "stdafx.h"
 #include "autongui.h"
 #include "ProcessPropDlg.h"
-#include "afxdialogex.h"
 #include "PriorityMap.h"
 #include "resource.h"
-#include "findindex.h"
+#include "stlext.h"
+#include "ChooseProcessDlg.h"
+#include "Win32Exception.h"
 
 // CProcessPropDlg ダイアログ
 
@@ -34,30 +35,43 @@ void CProcessPropDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CProcessPropDlg, CDialog)
-	ON_BN_CLICKED(IDC_PROCESS_EXE_FILE_NAME_BROWSE, &CProcessPropDlg::OnBnClickedProcessPropBrowse)
+	ON_BN_CLICKED(IDC_FILESYSTEM_FILENAME_BROWSE, &CProcessPropDlg::OnBnClickedFilesystemBrowse)
+	ON_BN_CLICKED(IDC_PROCESS_FILENAME_BROWSE, &CProcessPropDlg::OnBnClickedProcessPropBrowse)
+	ON_EN_UPDATE(IDC_PROCESS_EXE_FILE_NAME, &CProcessPropDlg::OnUpdateFilename)
 END_MESSAGE_MAP()
 
 // CProcessPropDlg メッセージ ハンドラー
 
+void CProcessPropDlg::OnBnClickedFilesystemBrowse()
+{
+	ATL::CComPtr<IFileDialog> dlg;
+	ThrowHRESULTIf(dlg.CoCreateInstance(CLSID_FileOpenDialog));
+	static constexpr COMDLG_FILTERSPEC filter[] {
+		{ L"Executable Files (*.exe; *.com; *.des)", L"*.exe;*.com;*.des" },
+		{ L"All Files (*.*)", L"*.*" }
+	};
+	dlg->SetFileTypes(ARRAYSIZE(filter), filter);
+	FILEOPENDIALOGOPTIONS options;
+	dlg->GetOptions(&options);
+	dlg->SetOptions(options | FOS_FORCEFILESYSTEM | FOS_FILEMUSTEXIST);
+	HRESULT hr = dlg->Show(m_hWnd);
+	if (SUCCEEDED(hr))
+	{
+		ATL::CComPtr<IShellItem> item;
+		ThrowHRESULTIf(dlg->GetResult(&item));
+		PWSTR path = NULL;
+		ThrowHRESULTIf(item->GetDisplayName(SIGDN_FILESYSPATH, &path));
+		PathStripPathW(path);
+		GetDlgItem(IDC_PROCESS_EXE_FILE_NAME)->SetWindowTextW(path);
+		CoTaskMemFree(path);
+	}
+}
+
 void CProcessPropDlg::OnBnClickedProcessPropBrowse()
 {
-	CString label;
-	label.LoadString(IDS_BROWSE_EXE_FILE);
-	TCHAR path[MAX_PATH];
-	BROWSEINFO bi;
-	ZeroMemory(&bi, sizeof(bi));
-	bi.hwndOwner = this->GetSafeHwnd();
-	bi.pszDisplayName = path;
-	bi.lpszTitle = label;
-	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_BROWSEINCLUDEFILES | BIF_NONEWFOLDERBUTTON;
-	LPITEMIDLIST pidlBrowse = SHBrowseForFolder(&bi);
-	if (NULL == pidlBrowse)
-	{
-		return;
-	}
-	SHGetPathFromIDList(pidlBrowse, path);
-	PathStripPath(path);
-	GetDlgItem(IDC_PROCESS_EXE_FILE_NAME)->SetWindowTextW(path);
+	CChooseProcessDlg dlg;
+	dlg.DoModal();
+	GetDlgItem(IDC_PROCESS_EXE_FILE_NAME)->SetWindowTextW(dlg.Model);
 }
 
 BOOL CProcessPropDlg::OnInitDialog()
@@ -73,9 +87,15 @@ BOOL CProcessPropDlg::OnInitDialog()
 	Enable = Model.Enable == FALSE;
 	ExeFilePath = Model.Filename.c_str();
 	PriorityIndex = (int)find_index(g_PriorityClassMap, Model.PriorityClass);
+	GetDlgItem(IDOK)->EnableWindow(!ExeFilePath.IsEmpty());
 	CDialog::OnInitDialog();
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 例外 : OCX プロパティ ページは必ず FALSE を返します。
+}
+
+void CProcessPropDlg::OnUpdateFilename()
+{
+	GetDlgItem(IDOK)->EnableWindow((GetDlgItem(IDC_PROCESS_EXE_FILE_NAME)->GetWindowTextLength() > 0));
 }
 
 void CProcessPropDlg::OnOK()

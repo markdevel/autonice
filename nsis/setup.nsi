@@ -1,5 +1,5 @@
 !define PRODUCT_NAME "autonice"
-!define PRODUCT_VERSION "1.2.0"
+!define PRODUCT_VERSION "1.3.0"
 !define PRODUCT_PUBLISHER "markdevel"
 !define PRODUCT_WEB_SITE "http://markdevel.hatenablog.com/"
 !define PRODUCT_DIR_REGKEY "Software\markdevel\autonice"
@@ -67,6 +67,8 @@ Section -Post
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
+  ExecWait '"$SYSDIR\sc.exe" stop autonice' $0
+  ExecWait '"$SYSDIR\sc.exe" delete autonice' $0
   ExecWait '"$SYSDIR\sc.exe" create autonice type= own start= auto binPath= "$INSTDIR\autonice.exe" obj= LocalSystem DisplayName= "AutoNice"' $0
   IntCmp $0 0 +3
     MessageBox MB_ICONINFORMATION|MB_OK "Cannot register the program as a service."

@@ -188,14 +188,16 @@
   <ItemGroup>
     <ClInclude Include="..\shared\include\AppConfig.h" />
     <ClInclude Include="..\shared\include\EventSource.h" />
-    <ClInclude Include="..\shared\include\findindex.h" />
     <ClInclude Include="..\shared\include\ProcessConfig.h" />
+    <ClInclude Include="..\shared\include\stlext.h" />
+    <ClInclude Include="..\shared\include\Toolhelp32Snapshot.h" />
     <ClInclude Include="..\shared\include\RegistryKey.h" />
     <ClInclude Include="..\shared\include\RegistrySerializer.h" />
     <ClInclude Include="..\shared\include\ScopedHandle.h" />
     <ClInclude Include="..\shared\include\ServiceConfig.h" />
     <ClInclude Include="..\shared\include\Win32Exception.h" />
     <ClInclude Include="autongui.h" />
+    <ClInclude Include="ChooseProcessDlg.h" />
     <ClInclude Include="MainDlg.h" />
     <ClInclude Include="PriorityMap.h" />
     <ClInclude Include="ProcessPropDlg.h" />
@@ -206,6 +208,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="autongui.cpp" />
+    <ClCompile Include="ChooseProcessDlg.cpp" />
     <ClCompile Include="MainDlg.cpp" />
     <ClCompile Include="PriorityMap.cpp" />
     <ClCompile Include="ProcessPropDlg.cpp" />

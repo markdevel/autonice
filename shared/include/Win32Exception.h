@@ -20,9 +20,11 @@ public:
 
 	std::wstring GetErrorFormatMessage() const
 	{
-		std::vector<wchar_t> buf(1024);
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, 0, error, 0, buf.data(), (DWORD)buf.size() - 1, 0);
-		return std::wstring(buf.data());
+		LPWSTR buf;
+		::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&buf, 0, NULL);
+		auto rv = std::wstring(buf);
+		::LocalFree(buf);
+		return rv;
 	}
 
 protected:
@@ -41,6 +43,14 @@ inline void ThrowLastErrorIf(bool expression, const std::wstring& msg = std::wst
 inline void ThrowLRESULTIf(LRESULT rv, const std::wstring& msg = std::wstring())
 {
 	if (IS_ERROR(rv))
+	{
+		throw Win32Exception((DWORD)rv, msg);
+	}
+}
+
+inline void ThrowHRESULTIf(HRESULT rv, const std::wstring& msg = std::wstring())
+{
+	if (FAILED(rv))
 	{
 		throw Win32Exception((DWORD)rv, msg);
 	}

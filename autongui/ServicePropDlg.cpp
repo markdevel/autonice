@@ -4,7 +4,6 @@
 #include "stdafx.h"
 #include "autongui.h"
 #include "ServicePropDlg.h"
-#include "afxdialogex.h"
 #include "resource.h"
 #include "ScopedHandle.h"
 
@@ -33,9 +32,6 @@ void CServicePropDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CServicePropDlg, CDialogEx)
 END_MESSAGE_MAP()
-
-
-// CServicePropDlg メッセージ ハンドラー
 
 const std::map<DWORD, UINT> CServicePropDlg::statusTextMap {
 	{ SERVICE_STOPPED, IDS_SERVICE_STOPPED },

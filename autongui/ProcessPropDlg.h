@@ -15,7 +15,7 @@ public:
 	enum { IDD = IDD_PROCESS_PROP };
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV サポート
+	virtual void DoDataExchange(CDataExchange* pDX) override;
 
 	DECLARE_MESSAGE_MAP()
 
@@ -24,8 +24,10 @@ protected:
 	int PriorityIndex;
 
 public:
+	afx_msg void OnBnClickedFilesystemBrowse();
 	afx_msg void OnBnClickedProcessPropBrowse();
-	virtual BOOL OnInitDialog();
-	virtual void OnOK();
+	afx_msg void OnUpdateFilename();
+	virtual BOOL OnInitDialog() override;
+	virtual void OnOK() override;
 	CProcessConfig Model;
 };
