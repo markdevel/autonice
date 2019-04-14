@@ -25,11 +25,7 @@
      https://aka.ms/vs/16/release/VC_redist.x64.exe
 2. インストーラー（32ビット・64ビット共通）をダウンロードし、実行する。
    * 最新版  
-     https://github.com/markdevel/autonice/releases/download/v1.2.0/setup-autonice-1.2.0.exe  
-     MD5: 15b9211479345c037b3fcbc020e32998
-   * 過去のバージョン  
-     https://github.com/markdevel/autonice/releases/download/v1.1.0/setup-autonice-1.1.0.exe  
-     MD5: 660edfd096153396e67786c63239405d
+     https://github.com/markdevel/autonice/releases
 
 ## 使い方
 
